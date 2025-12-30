@@ -2,172 +2,164 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Aegis Protocol — v1.1 FIXED</title>
+<title>Orb Runner</title>
+
 <style>
-body{margin:0;background:#02030a;color:#fff;font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden}
-canvas{border-radius:24px;box-shadow:0 40px 120px rgba(0,0,0,.9)}
-.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7);backdrop-filter:blur(8px)}
-.menu{background:linear-gradient(180deg,#12183a,#090c20);padding:28px;border-radius:20px;width:320px;text-align:center}
-.menu button{width:100%;margin-top:10px;padding:12px;border-radius:14px;border:none;background:linear-gradient(180deg,#7c88ff,#5661ff);color:#fff;font-weight:600;cursor:pointer}
-.menu button.secondary{background:#2a2f55}
-.menu input{width:100%;padding:8px;border-radius:10px;border:none;margin-bottom:6px}
+  body {
+    margin: 0;
+    background: #02030a;
+    color: #fff;
+    font-family: system-ui, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  canvas {
+    border-radius: 24px;
+    box-shadow: 0 40px 120px rgba(0,0,0,.9);
+    pointer-events: none; /* ✅ IMPORTANT FIX */
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0,0,0,.7);
+    backdrop-filter: blur(8px);
+    z-index: 10;
+    pointer-events: auto;
+  }
+
+  .menu {
+    background: linear-gradient(180deg, #12183a, #090c20);
+    padding: 28px;
+    border-radius: 20px;
+    width: 320px;
+    text-align: center;
+  }
+
+  .menu h1 {
+    margin-top: 0;
+  }
+
+  .menu button {
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 14px;
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(180deg, #7c88ff, #5661ff);
+    color: white;
+    font-size: 16px;
+  }
+
+  .menu button.secondary {
+    background: #2a2f55;
+  }
 </style>
 </head>
+
 <body>
+
 <canvas id="game" width="480" height="640"></canvas>
 
-<div id="start" class="overlay">
-<div class="menu">
-<h1>AEGIS PROTOCOL</h1><p style="opacity:.7;margin-top:-6px">Defend the Core</p>
-<p id="hs"></p>
-<input id="devCode" placeholder="Dev code" />
-<button class="secondary" onclick="devCheck()">Enter Dev Mode</button>
-<button onclick="startGame('hard')">Hard</button>
-<button class="secondary" onclick="startGame('normal')">Normal</button>
-<button class="secondary" onclick="startGame('baby')">Baby</button>
-<button class="secondary" onclick="openStore()">Store</button>
-</div></div>
-
-<div id="store" class="overlay" style="display:none">
-<div class="menu">
-<h2>Store</h2>
-<p id="credits"></p>
-<button onclick="buy('shield')">Shield +</button>
-<button onclick="buy('slow')">Slow Time</button>
-<button onclick="buy('bomb')">Bomb</button>
-<button class="secondary" onclick="closeStore()">Back</button>
-</div></div>
+<div id="menu" class="overlay">
+  <div class="menu">
+    <h1>ORB RUNNER</h1>
+    <p>Tap to dodge the orbs</p>
+    <button onclick="startGame()">Start Game</button>
+  </div>
+</div>
 
 <script>
-// === CORE SETUP ===
-const c=document.getElementById('game');
-const x=c.getContext('2d');
-const core={x:240,y:320,r:18};
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-let angle=0,shieldR=46,shieldSize=Math.PI/4;
-let orbs=[],boss=null,trails=[];
-let score=0,combo=1,comboT=0,credits=0,bombs=0;
-let spawnT=0,spawnR=34,speed=1;
-let mode='normal',over=false;
-let dev=false,inv=true;
-let shake=0,timeScale=1;
+let orbs = [];
+let running = false;
+let score = 0;
 
-// === HIGHSCORES ===
-const scores=JSON.parse(localStorage.getItem('cdScores')||'{"baby":0,"normal":0,"hard":0}');
-function hs(){document.getElementById('hs').innerText=`High — B:${scores.baby} N:${scores.normal} H:${scores.hard}`}
-hs();
+const player = {
+  x: canvas.width / 2,
+  y: canvas.height - 80,
+  r: 15
+};
 
-// === INPUT ===
-document.addEventListener('mousemove',e=>{
- const r=c.getBoundingClientRect();
- angle=Math.atan2(e.clientY-r.top-core.y,e.clientX-r.left-core.x)
+function startGame() {
+  document.getElementById("menu").style.display = "none";
+  orbs = [];
+  score = 0;
+  running = true;
+  loop();
+}
+
+canvas.addEventListener("click", e => {
+  const rect = canvas.getBoundingClientRect();
+  player.x = e.clientX - rect.left;
 });
 
-document.addEventListener('keydown',e=>{
- if(dev&&e.key==='k')inv=!inv;
- if(e.key===' '&&bombs>0){bombs--;orbs.forEach(o=>o.hit=1)}
-});
-
-c.onclick=()=>{shieldR=70;setTimeout(()=>shieldR=46,120)};
-
-// === MENUS ===
-function devCheck(){
- if(devCode.value==='987645'){
-  dev=true;inv=true;credits=9999;shieldSize=Math.PI;
-  alert('DEV MODE ENABLED');
- }
+function spawnOrb() {
+  orbs.push({
+    x: Math.random() * canvas.width,
+    y: -20,
+    r: 10 + Math.random() * 10,
+    v: 2 + Math.random() * 3
+  });
 }
 
-function startGame(m){
- mode=m;start.style.display='none';over=false;
- score=0;combo=1;orbs=[];boss=null;spawnT=0;
- if(m==='hard'){speed=1.3;spawnR=22}
- if(m==='normal'){speed=.9;spawnR=34}
- if(m==='baby'){speed=.55;spawnR=56}
+function update() {
+  if (Math.random() < 0.03) spawnOrb();
+
+  orbs.forEach(o => o.y += o.v);
+
+  orbs = orbs.filter(o => o.y < canvas.height + 50);
+
+  for (let o of orbs) {
+    const dx = o.x - player.x;
+    const dy = o.y - player.y;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    if (d < o.r + player.r) {
+      running = false;
+      document.getElementById("menu").style.display = "flex";
+    }
+  }
+
+  score++;
 }
 
-function openStore(){start.style.display='none';store.style.display='flex';ui()}
-function closeStore(){store.style.display='none';start.style.display='flex'}
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-function ui(){
- document.getElementById('credits').innerText=
-  `Credits: ${credits}${dev?' (DEV)':''} | Bombs: ${bombs}`;
+  ctx.fillStyle = "#fff";
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
+  ctx.fill();
+
+  ctx.fillStyle = "#ff4d4d";
+  orbs.forEach(o => {
+    ctx.beginPath();
+    ctx.arc(o.x, o.y, o.r, 0, Math.PI*2);
+    ctx.fill();
+  });
+
+  ctx.fillStyle = "#aaa";
+  ctx.fillText("Score: " + score, 12, 24);
 }
 
-function buy(t){
- if(dev||credits>=150){
-  if(t==='shield')shieldSize+=Math.PI/18;
-  if(t==='slow')speed*=.9;
-  if(t==='bomb')bombs++;
-  if(!dev)credits-=150;
-  ui();
- }
+function loop() {
+  if (!running) return;
+  update();
+  draw();
+  requestAnimationFrame(loop);
 }
+</script>
 
-// === SPAWN ===
-function orb(){
- const s=Math.floor(Math.random()*4);let x0,y0;
- if(s==0){x0=Math.random()*480;y0=-20}
- if(s==1){x0=500;y0=Math.random()*640}
- if(s==2){x0=Math.random()*480;y0=660}
- if(s==3){x0=-20;y0=Math.random()*640}
- const a=Math.atan2(core.y-y0,core.x-x0);
- orbs.push({x:x0,y:y0,r:11,vx:Math.cos(a)*(2+Math.random())*speed,vy:Math.sin(a)*(2+Math.random())*speed})
-}
+</body>
+</html>
 
-function spawnBoss(){boss={x:240,y:-80,r:40,hp:20}}
-
-// === UPDATE ===
-function update(){
- if(over)return;
- spawnT+=timeScale;
- if(!boss&&spawnT>spawnR){orb();spawnT=0}
- if(score>0&&score%300===0&&!boss)spawnBoss();
-
- for(const o of orbs){
-  trails.push({x:o.x,y:o.y,l:10});
-  o.x+=o.vx;o.y+=o.vy;
-  const dx=o.x-core.x,dy=o.y-core.y,d=Math.hypot(dx,dy);
-  const a=Math.atan2(dy,dx);
-  const diff=Math.abs(Math.atan2(Math.sin(a-angle),Math.cos(a-angle)));
-  if(d<shieldR&&diff<shieldSize/2){o.hit=1;score+=10}
-  else if(d<core.r+o.r&&!inv)end();
- }
-
- orbs=orbs.filter(o=>!o.hit);
- trails=trails.filter(t=>--t.l>0);
-}
-
-function end(){
- over=true;
- scores[mode]=Math.max(scores[mode],score);
- localStorage.setItem('cdScores',JSON.stringify(scores));
- hs();start.style.display='flex';
-}
-
-// === DRAW ===
-function draw(){
- x.clearRect(0,0,480,640);
- x.fillStyle='#02030a';x.fillRect(0,0,480,640);
-
- for(const t of trails){
-  x.fillStyle=`rgba(150,180,255,${t.l/10})`;
-  x.fillRect(t.x-1,t.y-1,2,2);
- }
-
- x.fillStyle='#6ee7ff';
- x.beginPath();x.arc(core.x,core.y,core.r,0,Math.PI*2);x.fill();
-
- x.strokeStyle='#a78bfa';x.lineWidth=7;
- x.beginPath();x.arc(core.x,core.y,shieldR,angle-shieldSize/2,angle+shieldSize/2);x.stroke();
-
- if(boss){x.fillStyle='#ff9f1c';x.beginPath();x.arc(boss.x,boss.y,boss.r,0,Math.PI*2);x.fill()}
-
- x.fillStyle='#ff6f91';
- for(const o of orbs){x.beginPath();x.arc(o.x,o.y,o.r,0,Math.PI*2);x.fill()}
-
- x.fillStyle='#fff';x.font='14px system-ui';
- x.fillText(`Score: ${score}`,12,20);
- x.fillText(`Credits: ${credits}${dev?' (DEV)':''}`,12,38);
- x.fillText(`Bombs: ${bombs}`,12,56);
- if(dev)x.fillText(`Invincible: ${inv?'ON':'OFF'} (K)`,12,
