@@ -1,66 +1,55 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Orb Runner</title>
+<meta charset="UTF-8">
+<title>Orb Runner V1.3</title>
 
 <style>
   body {
     margin: 0;
     background: #02030a;
-    color: #fff;
-    font-family: system-ui, sans-serif;
+    color: white;
+    font-family: Arial, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
-    overflow: hidden;
   }
 
   canvas {
-    border-radius: 24px;
-    box-shadow: 0 40px 120px rgba(0,0,0,.9);
-    pointer-events: none; /* ✅ IMPORTANT FIX */
+    background: #000;
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.8);
   }
 
-  .overlay {
+  #menu {
     position: absolute;
     inset: 0;
+    background: rgba(0,0,0,.7);
     display: flex;
     justify-content: center;
     align-items: center;
-    background: rgba(0,0,0,.7);
-    backdrop-filter: blur(8px);
-    z-index: 10;
-    pointer-events: auto;
+    z-index: 5;
   }
 
-  .menu {
-    background: linear-gradient(180deg, #12183a, #090c20);
-    padding: 28px;
+  .box {
+    background: #12183a;
+    padding: 30px;
     border-radius: 20px;
-    width: 320px;
+    width: 300px;
     text-align: center;
   }
 
-  .menu h1 {
-    margin-top: 0;
-  }
-
-  .menu button {
+  button {
     width: 100%;
-    margin-top: 10px;
     padding: 12px;
-    border-radius: 14px;
+    margin-top: 12px;
     border: none;
-    cursor: pointer;
-    background: linear-gradient(180deg, #7c88ff, #5661ff);
+    border-radius: 12px;
+    background: #6c7cff;
     color: white;
     font-size: 16px;
-  }
-
-  .menu button.secondary {
-    background: #2a2f55;
+    cursor: pointer;
   }
 </style>
 </head>
@@ -69,21 +58,23 @@
 
 <canvas id="game" width="480" height="640"></canvas>
 
-<div id="menu" class="overlay">
-  <div class="menu">
+<div id="menu">
+  <div class="box">
     <h1>ORB RUNNER</h1>
-    <p>Tap to dodge the orbs</p>
-    <button onclick="startGame()">Start Game</button>
+    <p>Click / Tap to move</p>
+    <button id="startBtn">Start Game</button>
   </div>
 </div>
 
 <script>
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+const menu = document.getElementById("menu");
+const startBtn = document.getElementById("startBtn");
 
-let orbs = [];
 let running = false;
 let score = 0;
+let orbs = [];
 
 const player = {
   x: canvas.width / 2,
@@ -91,18 +82,18 @@ const player = {
   r: 15
 };
 
-function startGame() {
-  document.getElementById("menu").style.display = "none";
-  orbs = [];
-  score = 0;
+startBtn.onclick = () => {
+  menu.style.display = "none";
   running = true;
+  score = 0;
+  orbs = [];
   loop();
-}
+};
 
-canvas.addEventListener("click", e => {
+canvas.onclick = (e) => {
   const rect = canvas.getBoundingClientRect();
   player.x = e.clientX - rect.left;
-});
+};
 
 function spawnOrb() {
   orbs.push({
@@ -116,17 +107,15 @@ function spawnOrb() {
 function update() {
   if (Math.random() < 0.03) spawnOrb();
 
-  orbs.forEach(o => o.y += o.v);
-
-  orbs = orbs.filter(o => o.y < canvas.height + 50);
+  for (let o of orbs) o.y += o.v;
+  orbs = orbs.filter(o => o.y < canvas.height + 40);
 
   for (let o of orbs) {
     const dx = o.x - player.x;
     const dy = o.y - player.y;
-    const d = Math.sqrt(dx*dx + dy*dy);
-    if (d < o.r + player.r) {
+    if (Math.hypot(dx, dy) < o.r + player.r) {
       running = false;
-      document.getElementById("menu").style.display = "flex";
+      menu.style.display = "flex";
     }
   }
 
@@ -136,20 +125,20 @@ function update() {
 function draw() {
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  ctx.fillStyle = "#fff";
+  ctx.fillStyle = "white";
   ctx.beginPath();
   ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
   ctx.fill();
 
-  ctx.fillStyle = "#ff4d4d";
-  orbs.forEach(o => {
+  ctx.fillStyle = "red";
+  for (let o of orbs) {
     ctx.beginPath();
     ctx.arc(o.x, o.y, o.r, 0, Math.PI*2);
     ctx.fill();
-  });
+  }
 
   ctx.fillStyle = "#aaa";
-  ctx.fillText("Score: " + score, 12, 24);
+  ctx.fillText("Score: " + score, 10, 20);
 }
 
 function loop() {
@@ -162,4 +151,5 @@ function loop() {
 
 </body>
 </html>
+
 
